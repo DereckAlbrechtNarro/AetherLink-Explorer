@@ -1,25 +1,9 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
-export default function CancelPage() {
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
+function CancelContent() {
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
@@ -32,12 +16,12 @@ export default function CancelPage() {
 
         <h1 className="text-3xl font-bold text-gray-800 mb-3">Payment Cancelled</h1>
         <p className="text-gray-600 mb-6">
-          Your payment was cancelled. No charges have been made to your account.
+          Your payment was cancelled. No charges have been made.
         </p>
 
         <div className="bg-yellow-50 rounded-xl p-4 mb-6 text-left border border-yellow-100">
           <p className="text-sm text-yellow-800">
-            💡 Tip: You can try checking out again or contact support if you need assistance.
+            💡 You can try checking out again or continue shopping.
           </p>
         </div>
 
@@ -55,11 +39,26 @@ export default function CancelPage() {
             Continue Shopping
           </Link>
         </div>
-
-        <p className="text-sm text-gray-400 mt-6">
-          Redirecting to home in {countdown} seconds...
-        </p>
       </div>
     </div>
+  );
+}
+
+function CancelLoading() {
+  return (
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function CancelPage() {
+  return (
+    <Suspense fallback={<CancelLoading />}>
+      <CancelContent />
+    </Suspense>
   );
 }

@@ -1,31 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
-export default function SuccessPage() {
+// Component that uses useSearchParams
+function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    // Clear cart after successful payment
-    localStorage.removeItem('cart');
-    
-    // Redirect countdown
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
@@ -62,11 +44,28 @@ export default function SuccessPage() {
             Back to Home
           </Link>
         </div>
-
-        <p className="text-sm text-gray-400 mt-6">
-          Redirecting to home in {countdown} seconds...
-        </p>
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function SuccessLoading() {
+  return (
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<SuccessLoading />}>
+      <SuccessContent />
+    </Suspense>
   );
 }
