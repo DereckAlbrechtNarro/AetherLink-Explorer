@@ -1,0 +1,45 @@
+{
+  "name": "aetherlink-explorer-backend",
+  "version": "1.0.0",
+  "description": "AetherLink Explorer - Off-grid satellite & adventura gear e-commerce with real-time map",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "docker:build": "docker build -t aetherlink-explorer .",
+    "docker:run": "docker run -p 5000:5000 --env-file .env aetherlink-explorer"
+  },
+  "keywords": [
+    "ecommerce",
+    "tesla",
+    "starlink",
+    "offgrid",
+    "socketio",
+    "docker",
+    "tesla-inspired",
+    "node",
+    "jwt",
+    "sequelize"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.16.2",
+    "pg": "^8.17.2",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "stripe": "^20.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
