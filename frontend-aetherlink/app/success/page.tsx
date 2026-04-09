@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-// Component that uses useSearchParams
 function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -12,7 +11,6 @@ function SuccessContent() {
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
-        {/* Success Icon */}
         <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <svg className="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -31,16 +29,10 @@ function SuccessContent() {
         </div>
 
         <div className="space-y-3">
-          <Link 
-            href="/products" 
-            className="block w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition"
-          >
+          <Link href="/products" className="block w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition">
             Continue Shopping
           </Link>
-          <Link 
-            href="/" 
-            className="block w-full py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold rounded-xl transition"
-          >
+          <Link href="/" className="block w-full py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold rounded-xl transition">
             Back to Home
           </Link>
         </div>
@@ -49,7 +41,6 @@ function SuccessContent() {
   );
 }
 
-// Loading fallback
 function SuccessLoading() {
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
@@ -61,7 +52,6 @@ function SuccessLoading() {
   );
 }
 
-// Main page component with Suspense boundary
 export default function SuccessPage() {
   return (
     <Suspense fallback={<SuccessLoading />}>
