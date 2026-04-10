@@ -2,7 +2,6 @@
 
 import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 
 interface Satellite {
@@ -32,143 +31,86 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapContentProps) {
-  const previousRadii = useRef<Map<string, number>>(new Map());
-  
   const getStatusColor = (status: Satellite['status']): string => {
     switch (status) {
-      case 'strong':
-        return '#10b981';
-      case 'weak':
-        return '#ef4444';
-      default:
-        return '#eab308';
+      case 'strong': return '#10b981';
+      case 'weak': return '#ef4444';
+      default: return '#eab308';
     }
   };
 
-  // Show loading state
   if (!coverage || !coverage.satellites || coverage.satellites.length === 0) {
     return (
       <div className="bg-white rounded-xl flex items-center justify-center shadow-lg" style={{ height: '500px' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">Connecting to satellite network...</p>
+          <p className="text-gray-500">Loading satellites...</p>
         </div>
       </div>
     );
   }
 
-  // Calculate center to show ALL satellites
-  const lats = coverage.satellites.map(s => s.lat);
-  const lngs = coverage.satellites.map(s => s.lng);
-  const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-  const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
-  
-  // Calculate zoom level to fit all satellites
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latDiff = maxLat - minLat;
-  const lngDiff = maxLng - minLng;
-  const maxDiff = Math.max(latDiff, lngDiff);
-  
-  let zoomLevel = 2;
-  if (maxDiff < 60) zoomLevel = 3;
-  if (maxDiff < 40) zoomLevel = 4;
-  if (maxDiff < 25) zoomLevel = 5;
-  if (maxDiff < 15) zoomLevel = 6;
-
+  // Center at [0, 0] to show the whole world once
+  // Zoom level 2 shows entire planet without repeating
   return (
     <MapContainer
-      key="single-world-map"
-      center={[centerLat, centerLng]}
-      zoom={zoomLevel}
+      center={[0, 0]}
+      zoom={2}
       minZoom={2}
-      maxZoom={8}
+      maxZoom={6}
       zoomControl={true}
       scrollWheelZoom={true}
       dragging={true}
-      // CRITICAL: Prevents looping/repeating
+      // CRITICAL: NO LOOPING, NO REPEATING
       worldCopyJump={false}
-      // Restrict panning to single world view
-      maxBounds={[[-90, -180], [90, 180]]}
+      maxBounds={[[-85, -180], [85, 180]]}
       maxBoundsViscosity={1.0}
       style={{ height: '500px', width: '100%', borderRadius: '16px', background: '#e8f4f8' }}
-      className="z-0 shadow-xl"
     >
-      {/* Using OpenStreetMap standard tiles - no repeating, single world view */}
+      {/* Standard OpenStreetMap - shows continents ONCE */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        // Prevent loading tiles outside the world bounds
-        bounds={[[-90, -180], [90, 180]]}
+        attribution='&copy; OpenStreetMap contributors'
+        noWrap={true}
       />
       
-      {coverage.satellites.map((sat) => {
-        const prevRadius = previousRadii.current.get(sat.id) || sat.coverageRadius;
-        const isPulsing = Math.abs(sat.coverageRadius - prevRadius) > 50;
-        previousRadii.current.set(sat.id, sat.coverageRadius);
-        
-        // Only render satellites within visible bounds
-        if (sat.lat < -85 || sat.lat > 85) return null;
-        
-        return (
-          <div key={sat.id}>
-            {/* Outer pulsating coverage circle */}
-            <Circle
-              center={[sat.lat, sat.lng]}
-              radius={Math.min(sat.coverageRadius * 1000, 2000000)}
-              pathOptions={{ 
-                color: getStatusColor(sat.status), 
-                fillColor: getStatusColor(sat.status),
-                fillOpacity: 0.12,
-                weight: 2,
-                opacity: 0.8,
-                className: isPulsing ? 'animate-pulse-ring' : ''
-              }}
-            />
-            {/* Inner signal circle */}
-            <Circle
-              center={[sat.lat, sat.lng]}
-              radius={Math.min(sat.coverageRadius * 500, 1000000)}
-              pathOptions={{ 
-                color: getStatusColor(sat.status), 
-                fillColor: getStatusColor(sat.status),
-                fillOpacity: 0.25,
-                weight: 1.5,
-                opacity: 0.6
-              }}
-            />
-            <Marker position={[sat.lat, sat.lng]}>
-              <Popup>
-                <div className="text-sm min-w-45">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
-                    <strong className="text-lg">Satellite {sat.id}</strong>
-                  </div>
-                  <div className="space-y-1">
-                    <p>Status: <span className={`capitalize font-semibold ${
-                      sat.status === 'strong' ? 'text-green-600' : 
-                      sat.status === 'weak' ? 'text-red-500' : 'text-yellow-600'
-                    }`}>{sat.status}</span></p>
-                    <p>Coverage: <span className="font-mono">{sat.coverageRadius.toLocaleString()} km</span></p>
-                    <p>Position: <span className="font-mono">{Math.abs(sat.lat).toFixed(2)}° {sat.lat >= 0 ? 'N' : 'S'}, {Math.abs(sat.lng).toFixed(2)}° {sat.lng >= 0 ? 'E' : 'W'}</span></p>
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div 
-                          className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, (sat.coverageRadius / 1600) * 100)}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">Signal strength: {Math.min(100, Math.round((sat.coverageRadius / 1600) * 100))}%</p>
-                    </div>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          </div>
-        );
-      })}
+      {coverage.satellites.map((sat) => (
+        <div key={sat.id}>
+          <Circle
+            center={[sat.lat, sat.lng]}
+            radius={Math.min(sat.coverageRadius * 1000, 2000000)}
+            pathOptions={{ 
+              color: getStatusColor(sat.status), 
+              fillColor: getStatusColor(sat.status),
+              fillOpacity: 0.15,
+              weight: 2,
+            }}
+          />
+          <Circle
+            center={[sat.lat, sat.lng]}
+            radius={Math.min(sat.coverageRadius * 500, 1000000)}
+            pathOptions={{ 
+              color: getStatusColor(sat.status), 
+              fillColor: getStatusColor(sat.status),
+              fillOpacity: 0.3,
+              weight: 1,
+            }}
+          />
+          <Marker position={[sat.lat, sat.lng]}>
+            <Popup>
+              <div className="text-sm">
+                <strong>Satellite {sat.id}</strong><br />
+                Status: <span className={`capitalize font-semibold ${
+                  sat.status === 'strong' ? 'text-green-600' : 
+                  sat.status === 'weak' ? 'text-red-500' : 'text-yellow-600'
+                }`}>{sat.status}</span><br />
+                Coverage: {sat.coverageRadius.toLocaleString()} km<br />
+                Position: {sat.lat.toFixed(1)}°, {sat.lng.toFixed(1)}°
+              </div>
+            </Popup>
+          </Marker>
+        </div>
+      ))}
     </MapContainer>
   );
 }
