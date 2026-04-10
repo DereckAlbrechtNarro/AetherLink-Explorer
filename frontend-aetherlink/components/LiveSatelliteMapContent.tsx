@@ -54,39 +54,33 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
     );
   }
 
-  // Calculate bounds to fit all satellites
-  const lats = coverage.satellites.map(s => s.lat);
-  const lngs = coverage.satellites.map(s => s.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
+  // Fixed center: Americas on left, Europe/Asia on right
+  // Center at [20°N, 20°E] shows both hemispheres well
+  const centerLat = 20;
+  const centerLng = 20;
   
-  // Center of all satellites
-  const centerLat = (minLat + maxLat) / 2;
-  const centerLng = (minLng + maxLng) / 2;
-  
-  // Calculate zoom level to show all satellites
-  const latDiff = maxLat - minLat;
-  const lngDiff = maxLng - minLng;
-  const maxDiff = Math.max(latDiff, lngDiff);
-  let zoomLevel = 2;
-  if (maxDiff < 60) zoomLevel = 3;
-  if (maxDiff < 40) zoomLevel = 4;
-  if (maxDiff < 25) zoomLevel = 5;
-  if (maxDiff < 15) zoomLevel = 6;
+  // Fixed zoom level that shows the whole world without looping
+  const zoomLevel = 2;
 
   return (
     <MapContainer
+      key="static-world-map"
       center={[centerLat, centerLng]}
       zoom={zoomLevel}
       minZoom={2}
-      maxZoom={8}
+      maxZoom={6}
+      zoomControl={true}
+      scrollWheelZoom={true}
+      dragging={true}
+      // CRITICAL: Prevents map from looping/repeating
+      worldCopyJump={false}
+      maxBounds={[[-90, -180], [90, 180]]}
+      maxBoundsViscosity={1.0}
       style={{ height: '500px', width: '100%', borderRadius: '16px', background: '#e8f4f8' }}
       className="z-0 shadow-xl"
-      scrollWheelZoom={true}
     >
       <TileLayer
+        // Clean, beautiful map tiles - Americas left, Europe/Asia right
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
@@ -105,7 +99,7 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
               opacity: 0.7
             }}
           />
-          {/* Inner signal circle */}
+          {/* Inner signal circle for better visibility */}
           <Circle
             center={[sat.lat, sat.lng]}
             radius={sat.coverageRadius * 500}
@@ -119,7 +113,7 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
           />
           <Marker position={[sat.lat, sat.lng]}>
             <Popup>
-              <div className="text-sm">
+              <div className="text-sm min-w-45">
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
                   <strong className="text-lg">Satellite {sat.id}</strong>
