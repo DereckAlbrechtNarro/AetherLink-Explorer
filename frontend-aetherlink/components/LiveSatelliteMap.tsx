@@ -52,7 +52,7 @@ export default function LiveSatelliteMap() {
 
     socket.on('coverageUpdate', (data: CoverageData) => {
       setCoverage(data);
-      console.log('📡 Update received:', data.timestamp);
+      console.log('📡 Update received:', data.timestamp, `${data.satellites.length} satellites`);
     });
 
     socket.on('disconnect', () => {
@@ -72,7 +72,6 @@ export default function LiveSatelliteMap() {
     };
   }, []);
 
-  // Format time for display
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -86,7 +85,6 @@ export default function LiveSatelliteMap() {
     ? coverage.satellites.reduce((sum, sat) => sum + sat.coverageRadius, 0) / coverage.satellites.length
     : 0;
 
-  // Get last update time from coverage data or current time
   const lastUpdateTime = coverage?.timestamp 
     ? new Date(coverage.timestamp).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -96,6 +94,8 @@ export default function LiveSatelliteMap() {
       })
     : '--:--:--';
 
+  const satelliteCount = coverage?.satellites.length || 0;
+
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
@@ -103,7 +103,7 @@ export default function LiveSatelliteMap() {
           🛰️ Live Satellite Coverage
         </h2>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {/* Live Clock */}
           <div className="bg-gray-100 rounded-lg px-3 py-1">
             <span className="text-gray-500 text-xs">Current Time</span>
@@ -122,7 +122,7 @@ export default function LiveSatelliteMap() {
           </div>
           
           <div className="bg-gray-100 rounded-lg px-3 py-1">
-            <span className="text-emerald-600 font-mono font-bold">{coverage?.satellites.length || 0}</span>
+            <span className="text-emerald-600 font-mono font-bold">{satelliteCount}</span>
             <span className="text-gray-500 text-sm ml-1">satellites</span>
           </div>
           

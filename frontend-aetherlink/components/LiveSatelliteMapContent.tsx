@@ -2,7 +2,7 @@
 
 import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 
 interface Satellite {
@@ -57,44 +57,67 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
     );
   }
 
-  // Fixed center that shows the whole world
-  const centerLat = 20;
-  const centerLng = 20;
-  const zoomLevel = 2;
+  // Calculate center to show ALL satellites
+  const lats = coverage.satellites.map(s => s.lat);
+  const lngs = coverage.satellites.map(s => s.lng);
+  const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+  const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+  
+  // Calculate zoom level to fit all satellites
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latDiff = maxLat - minLat;
+  const lngDiff = maxLng - minLng;
+  const maxDiff = Math.max(latDiff, lngDiff);
+  
+  let zoomLevel = 2;
+  if (maxDiff < 60) zoomLevel = 3;
+  if (maxDiff < 40) zoomLevel = 4;
+  if (maxDiff < 25) zoomLevel = 5;
+  if (maxDiff < 15) zoomLevel = 6;
 
   return (
     <MapContainer
-      key="static-world-map"
+      key="single-world-map"
       center={[centerLat, centerLng]}
       zoom={zoomLevel}
       minZoom={2}
-      maxZoom={6}
+      maxZoom={8}
       zoomControl={true}
       scrollWheelZoom={true}
       dragging={true}
+      // CRITICAL: Prevents looping/repeating
       worldCopyJump={false}
+      // Restrict panning to single world view
       maxBounds={[[-90, -180], [90, 180]]}
       maxBoundsViscosity={1.0}
       style={{ height: '500px', width: '100%', borderRadius: '16px', background: '#e8f4f8' }}
       className="z-0 shadow-xl"
     >
+      {/* Using OpenStreetMap standard tiles - no repeating, single world view */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        // Prevent loading tiles outside the world bounds
+        bounds={[[-90, -180], [90, 180]]}
       />
       
       {coverage.satellites.map((sat) => {
-        // Detect if radius is changing for animation
         const prevRadius = previousRadii.current.get(sat.id) || sat.coverageRadius;
         const isPulsing = Math.abs(sat.coverageRadius - prevRadius) > 50;
         previousRadii.current.set(sat.id, sat.coverageRadius);
+        
+        // Only render satellites within visible bounds
+        if (sat.lat < -85 || sat.lat > 85) return null;
         
         return (
           <div key={sat.id}>
             {/* Outer pulsating coverage circle */}
             <Circle
               center={[sat.lat, sat.lng]}
-              radius={sat.coverageRadius * 1000}
+              radius={Math.min(sat.coverageRadius * 1000, 2000000)}
               pathOptions={{ 
                 color: getStatusColor(sat.status), 
                 fillColor: getStatusColor(sat.status),
@@ -104,10 +127,10 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
                 className: isPulsing ? 'animate-pulse-ring' : ''
               }}
             />
-            {/* Inner signal circle for better visibility */}
+            {/* Inner signal circle */}
             <Circle
               center={[sat.lat, sat.lng]}
-              radius={sat.coverageRadius * 600}
+              radius={Math.min(sat.coverageRadius * 500, 1000000)}
               pathOptions={{ 
                 color: getStatusColor(sat.status), 
                 fillColor: getStatusColor(sat.status),
@@ -116,21 +139,9 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
                 opacity: 0.6
               }}
             />
-            {/* Core marker */}
-            <Circle
-              center={[sat.lat, sat.lng]}
-              radius={150000} // 150km core
-              pathOptions={{ 
-                color: getStatusColor(sat.status), 
-                fillColor: getStatusColor(sat.status),
-                fillOpacity: 0.5,
-                weight: 1,
-                opacity: 0.9
-              }}
-            />
             <Marker position={[sat.lat, sat.lng]}>
               <Popup>
-                <div className="text-sm min-w-45">
+                <div className="text-sm min-w-[180px]">
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
                     <strong className="text-lg">Satellite {sat.id}</strong>
@@ -146,7 +157,7 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
                       <div className="w-full bg-gray-200 rounded-full h-1.5">
                         <div 
                           className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${(sat.coverageRadius / 1600) * 100}%` }}
+                          style={{ width: `${Math.min(100, (sat.coverageRadius / 1600) * 100)}%` }}
                         ></div>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">Signal strength: {Math.min(100, Math.round((sat.coverageRadius / 1600) * 100))}%</p>
