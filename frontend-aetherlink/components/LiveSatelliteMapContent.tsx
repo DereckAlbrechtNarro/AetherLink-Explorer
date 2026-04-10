@@ -141,7 +141,7 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
             />
             <Marker position={[sat.lat, sat.lng]}>
               <Popup>
-                <div className="text-sm min-w-[180px]">
+                <div className="text-sm min-w-45">
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
                     <strong className="text-lg">Satellite {sat.id}</strong>
