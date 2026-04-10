@@ -2,6 +2,7 @@
 
 import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 
 interface Satellite {
@@ -31,6 +32,8 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapContentProps) {
+  const previousRadii = useRef<Map<string, number>>(new Map());
+  
   const getStatusColor = (status: Satellite['status']): string => {
     switch (status) {
       case 'strong':
@@ -54,12 +57,9 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
     );
   }
 
-  // Fixed center: Americas on left, Europe/Asia on right
-  // Center at [20°N, 20°E] shows both hemispheres well
+  // Fixed center that shows the whole world
   const centerLat = 20;
   const centerLng = 20;
-  
-  // Fixed zoom level that shows the whole world without looping
   const zoomLevel = 2;
 
   return (
@@ -72,7 +72,6 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
       zoomControl={true}
       scrollWheelZoom={true}
       dragging={true}
-      // CRITICAL: Prevents map from looping/repeating
       worldCopyJump={false}
       maxBounds={[[-90, -180], [90, 180]]}
       maxBoundsViscosity={1.0}
@@ -80,57 +79,85 @@ export default function LiveSatelliteMapContent({ coverage }: LiveSatelliteMapCo
       className="z-0 shadow-xl"
     >
       <TileLayer
-        // Clean, beautiful map tiles - Americas left, Europe/Asia right
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
       
-      {coverage.satellites.map((sat) => (
-        <div key={sat.id}>
-          {/* Outer coverage circle */}
-          <Circle
-            center={[sat.lat, sat.lng]}
-            radius={sat.coverageRadius * 1000}
-            pathOptions={{ 
-              color: getStatusColor(sat.status), 
-              fillColor: getStatusColor(sat.status),
-              fillOpacity: 0.12,
-              weight: 2,
-              opacity: 0.7
-            }}
-          />
-          {/* Inner signal circle for better visibility */}
-          <Circle
-            center={[sat.lat, sat.lng]}
-            radius={sat.coverageRadius * 500}
-            pathOptions={{ 
-              color: getStatusColor(sat.status), 
-              fillColor: getStatusColor(sat.status),
-              fillOpacity: 0.25,
-              weight: 1,
-              opacity: 0.5
-            }}
-          />
-          <Marker position={[sat.lat, sat.lng]}>
-            <Popup>
-              <div className="text-sm min-w-45">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
-                  <strong className="text-lg">Satellite {sat.id}</strong>
+      {coverage.satellites.map((sat) => {
+        // Detect if radius is changing for animation
+        const prevRadius = previousRadii.current.get(sat.id) || sat.coverageRadius;
+        const isPulsing = Math.abs(sat.coverageRadius - prevRadius) > 50;
+        previousRadii.current.set(sat.id, sat.coverageRadius);
+        
+        return (
+          <div key={sat.id}>
+            {/* Outer pulsating coverage circle */}
+            <Circle
+              center={[sat.lat, sat.lng]}
+              radius={sat.coverageRadius * 1000}
+              pathOptions={{ 
+                color: getStatusColor(sat.status), 
+                fillColor: getStatusColor(sat.status),
+                fillOpacity: 0.12,
+                weight: 2,
+                opacity: 0.8,
+                className: isPulsing ? 'animate-pulse-ring' : ''
+              }}
+            />
+            {/* Inner signal circle for better visibility */}
+            <Circle
+              center={[sat.lat, sat.lng]}
+              radius={sat.coverageRadius * 600}
+              pathOptions={{ 
+                color: getStatusColor(sat.status), 
+                fillColor: getStatusColor(sat.status),
+                fillOpacity: 0.25,
+                weight: 1.5,
+                opacity: 0.6
+              }}
+            />
+            {/* Core marker */}
+            <Circle
+              center={[sat.lat, sat.lng]}
+              radius={150000} // 150km core
+              pathOptions={{ 
+                color: getStatusColor(sat.status), 
+                fillColor: getStatusColor(sat.status),
+                fillOpacity: 0.5,
+                weight: 1,
+                opacity: 0.9
+              }}
+            />
+            <Marker position={[sat.lat, sat.lng]}>
+              <Popup>
+                <div className="text-sm min-w-45">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-3 h-3 rounded-full animate-pulse`} style={{ backgroundColor: getStatusColor(sat.status) }}></div>
+                    <strong className="text-lg">Satellite {sat.id}</strong>
+                  </div>
+                  <div className="space-y-1">
+                    <p>Status: <span className={`capitalize font-semibold ${
+                      sat.status === 'strong' ? 'text-green-600' : 
+                      sat.status === 'weak' ? 'text-red-500' : 'text-yellow-600'
+                    }`}>{sat.status}</span></p>
+                    <p>Coverage: <span className="font-mono">{sat.coverageRadius.toLocaleString()} km</span></p>
+                    <p>Position: <span className="font-mono">{Math.abs(sat.lat).toFixed(2)}° {sat.lat >= 0 ? 'N' : 'S'}, {Math.abs(sat.lng).toFixed(2)}° {sat.lng >= 0 ? 'E' : 'W'}</span></p>
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div 
+                          className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${(sat.coverageRadius / 1600) * 100}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Signal strength: {Math.min(100, Math.round((sat.coverageRadius / 1600) * 100))}%</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p>Status: <span className={`capitalize font-semibold ${
-                    sat.status === 'strong' ? 'text-green-600' : 
-                    sat.status === 'weak' ? 'text-red-500' : 'text-yellow-600'
-                  }`}>{sat.status}</span></p>
-                  <p>Coverage: <span className="font-mono">{sat.coverageRadius.toLocaleString()} km</span></p>
-                  <p>Position: <span className="font-mono">{Math.abs(sat.lat).toFixed(2)}° {sat.lat >= 0 ? 'N' : 'S'}, {Math.abs(sat.lng).toFixed(2)}° {sat.lng >= 0 ? 'E' : 'W'}</span></p>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        </div>
-      ))}
+              </Popup>
+            </Marker>
+          </div>
+        );
+      })}
     </MapContainer>
   );
 }
